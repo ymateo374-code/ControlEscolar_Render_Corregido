@@ -1,0 +1,48 @@
+{% extends 'escolar/base.html' %}
+{% load escolar_extras %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="fw-bold mb-1">{{ titulo }}</h1>
+        <p class="text-muted mb-0">Consulta, modifica o elimina registros del módulo.</p>
+    </div>
+    <a href="{% url crear_url %}" class="btn btn-primary">Agregar nuevo</a>
+</div>
+
+<div class="card page-card">
+    <div class="card-body p-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        {% for campo, encabezado in columnas %}
+                            <th>{{ encabezado }}</th>
+                        {% endfor %}
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for obj in objetos %}
+                    <tr>
+                        {% for campo, encabezado in columnas %}
+                            <td>{{ obj|attr:campo }}</td>
+                        {% endfor %}
+                        <td class="text-center">
+                            <a href="{% url editar_url obj.id %}" class="btn btn-warning btn-sm">Editar</a>
+                            <a href="{% url eliminar_url obj.id %}" class="btn btn-danger btn-sm">Eliminar</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ columnas|length|add:'1' }}" class="text-center text-muted py-4">
+                            No hay registros disponibles.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

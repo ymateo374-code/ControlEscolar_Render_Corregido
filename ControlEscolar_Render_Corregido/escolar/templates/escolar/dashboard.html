@@ -1,0 +1,58 @@
+{% extends 'escolar/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="fw-bold mb-1">Panel principal</h1>
+        <p class="text-muted mb-0">Sistema Web de Control Escolar.</p>
+    </div>
+    <a href="{% url 'estudiante_crear' %}" class="btn btn-primary">Registrar estudiante</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card card-stat p-3"><span class="text-muted">Estudiantes</span><h2>{{ total_estudiantes }}</h2></div></div>
+    <div class="col-md-3"><div class="card card-stat p-3"><span class="text-muted">Profesores</span><h2>{{ total_profesores }}</h2></div></div>
+    <div class="col-md-3"><div class="card card-stat p-3"><span class="text-muted">Materias</span><h2>{{ total_materias }}</h2></div></div>
+    <div class="col-md-3"><div class="card card-stat p-3"><span class="text-muted">Grupos</span><h2>{{ total_grupos }}</h2></div></div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card card-stat p-3"><span class="text-muted">Carreras</span><h3>{{ total_carreras }}</h3></div></div>
+    <div class="col-md-4"><div class="card card-stat p-3"><span class="text-muted">Aulas</span><h3>{{ total_aulas }}</h3></div></div>
+    <div class="col-md-4"><div class="card card-stat p-3"><span class="text-muted">Calificaciones</span><h3>{{ total_calificaciones }}</h3></div></div>
+</div>
+
+<div class="card page-card">
+    <div class="card-header bg-white border-0 pt-4 px-4">
+        <h4 class="fw-bold">Grupos recientes</h4>
+    </div>
+    <div class="card-body px-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Grupo</th>
+                        <th>Materia</th>
+                        <th>Profesor</th>
+                        <th>Aula</th>
+                        <th>Periodo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for grupo in grupos_recientes %}
+                    <tr>
+                        <td>{{ grupo.nombre }}</td>
+                        <td>{{ grupo.materia }}</td>
+                        <td>{{ grupo.profesor }}</td>
+                        <td>{{ grupo.aula }}</td>
+                        <td>{{ grupo.periodo }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted">Aún no hay grupos registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
