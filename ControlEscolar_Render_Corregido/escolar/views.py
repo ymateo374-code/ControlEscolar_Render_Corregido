@@ -6,8 +6,7 @@ from .models import Carrera, Profesor, Estudiante, Materia, Aula, PeriodoSemestr
 from django.db.models import Avg
 from django.http import HttpResponse
 from .forms import CarreraForm, ProfesorForm, EstudianteForm, MateriaForm, AulaForm, PeriodoSemestralForm, HorarioForm, GrupoForm, CalificacionForm
-from reportlab.platypus import Table, TableStyle
-from reportlab.lib import colors
+
 
 def dashboard(request):
     context = {
@@ -323,96 +322,208 @@ class GrupoDetalleView(DetailView):
         context['alumnos'] = alumnos
         return context
 
-from django.http import HttpResponse
-from reportlab.platypus import Table, TableStyle
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import landscape, letter
-from reportlab.pdfgen import canvas
-from .models import Grupo, Calificacion
 
+def grupo_pdf(request, pk):
+    from django.http import HttpResponse
+    from django.shortcuts import get_object_or_404
+    from django.db.models import Avg
 
-def generar_pdf_grupo(request, grupo_id):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib.units import cm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.platypus import (
+        SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    )
 
-    grupo = Grupo.objects.get(id=grupo_id)
-
-    calificaciones = Calificacion.objects.filter(grupo=grupo)
+    grupo = get_object_or_404(
+        Grupo.objects.select_related('materia', 'profesor', 'aula', 'periodo', 'horario'),
+        pk=pk
+    )
 
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'attachment; filename="grupo_{grupo.id}.pdf"'
+    response['Content-Disposition'] = f'inline; filename="grupo_{grupo.id}.pdf"'
 
-    pdf = canvas.Canvas(response, pagesize=landscape(letter))
+    doc = SimpleDocTemplate(
+        response,
+        pagesize=landscape(letter),
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=25,
+        bottomMargin=25
+    )
 
-    # ===== TITULO =====
-    pdf.setFont("Helvetica-Bold", 20)
-    pdf.drawString(250, 550, "Reporte Parcial de Calificaciones")
+    styles = getSampleStyleSheet()
 
-    # ===== DATOS DEL GRUPO =====
-    pdf.setFont("Helvetica", 12)
+    titulo_style = ParagraphStyle(
+        'TituloInstitucional',
+        parent=styles['Title'],
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        fontSize=16,
+        textColor=colors.HexColor('#17223b'),
+        spaceAfter=4
+    )
 
-    pdf.drawString(50, 510, f"Grupo: {grupo.nombre}")
-    pdf.drawString(50, 490, f"Materia: {grupo.materia}")
-    pdf.drawString(50, 470, f"Profesor: {grupo.profesor}")
-    pdf.drawString(50, 450, f"Aula: {grupo.aula}")
-    pdf.drawString(50, 430, f"Periodo: {grupo.periodo}")
+    subtitulo_style = ParagraphStyle(
+        'Subtitulo',
+        parent=styles['Title'],
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        textColor=colors.black,
+        spaceAfter=12
+    )
 
-    # ===== TABLA =====
-    datos = [[
-        "No. Control",
-        "Nombre",
-        "Apellido Paterno",
-        "Apellido Materno",
-        "Promedio"
-    ]]
+    normal_style = ParagraphStyle(
+        'NormalReporte',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=9,
+        leading=11,
+        alignment=TA_LEFT
+    )
 
-    for c in calificaciones:
+    elementos = []
 
-        promedio = c.calificacion if c.calificacion else 0
+    elementos.append(Paragraph('INSTITUTO TECNOLÓGICO DE ACAPULCO', titulo_style))
+    elementos.append(Paragraph('Reporte Parcial de Calificaciones', subtitulo_style))
+    elementos.append(Spacer(1, 6))
 
-        datos.append([
-            c.estudiante.numero_control,
-            c.estudiante.nombre,
-            c.estudiante.apellido_paterno,
-            c.estudiante.apellido_materno,
-            str(promedio)
-        ])
+    estudiantes = grupo.estudiantes.all().order_by(
+        'apellido_paterno',
+        'apellido_materno',
+        'nombre'
+    )
 
-    tabla = Table(datos, colWidths=[120, 120, 140, 140, 100])
+    total_estudiantes = estudiantes.count()
 
-    tabla.setStyle(TableStyle([
+    info_grupo = [
+        [
+            Paragraph(f'<b>Materia:</b> {grupo.materia}', normal_style),
+            Paragraph(f'<b>Fecha:</b> 2026-02-25', normal_style),
+        ],
+        [
+            Paragraph(f'<b>Grupo:</b> {grupo.nombre}', normal_style),
+            Paragraph(f'<b>Periodo:</b> {grupo.periodo}', normal_style),
+        ],
+        [
+            Paragraph(f'<b>Docente:</b> {grupo.profesor}', normal_style),
+            Paragraph(f'<b>Estudiantes:</b> {total_estudiantes}', normal_style),
+        ],
+        [
+            Paragraph(f'<b>Aula:</b> {grupo.aula}', normal_style),
+            Paragraph(f'<b>Horario:</b> {grupo.horario}', normal_style),
+        ],
+    ]
 
-        # Encabezado
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#0B1F4D")),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 11),
+    tabla_info = Table(info_grupo, colWidths=[13 * cm, 8 * cm])
 
-        # Datos
-        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-        ('FONTSIZE', (0,1), (-1,-1), 9),
-
-        # Bordes
-        ('GRID', (0,0), (-1,-1), 1, colors.black),
-
-        # Fondo
-        ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
-
-        # Centrado
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-
-        # Espaciado
-        ('BOTTOMPADDING', (0,0), (-1,0), 10),
-        ('TOPPADDING', (0,0), (-1,0), 10),
-
+    tabla_info.setStyle(TableStyle([
+        ('GRID', (0, 0), (-1, -1), 0.7, colors.black),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f4f6f9')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
     ]))
 
-    tabla.wrapOn(pdf, 50, 300)
-    tabla.drawOn(pdf, 50, 300)
+    elementos.append(tabla_info)
+    elementos.append(Spacer(1, 14))
 
-    pdf.save()
+    datos = [[
+        '#',
+        'Número Control',
+        'Nombre del Alumno',
+        'U1',
+        'U2',
+        'U3',
+        'U4',
+        'U5',
+        'U6',
+        'Promedio'
+    ]]
+
+    for index, estudiante in enumerate(estudiantes, start=1):
+        promedio = Calificacion.objects.filter(
+            grupo=grupo,
+            estudiante=estudiante
+        ).aggregate(promedio=Avg('calificacion'))['promedio']
+
+        nombre_completo = f'{estudiante.apellido_paterno} {estudiante.apellido_materno} {estudiante.nombre}'
+
+        datos.append([
+            index,
+            estudiante.numero_control,
+            nombre_completo,
+            'NA',
+            'NA',
+            'NA',
+            'NA',
+            'NA',
+            'NA',
+            f'{promedio:.2f}' if promedio is not None else 'Sin calificación'
+        ])
+
+    if len(datos) == 1:
+        datos.append(['-', '-', 'Sin alumnos registrados', '-', '-', '-', '-', '-', '-', '-'])
+
+    tabla = Table(
+        datos,
+        repeatRows=1,
+        colWidths=[
+            0.8 * cm,
+            2.6 * cm,
+            7.0 * cm,
+            1.1 * cm,
+            1.1 * cm,
+            1.1 * cm,
+            1.1 * cm,
+            1.1 * cm,
+            1.1 * cm,
+            2.2 * cm,
+        ]
+    )
+
+    tabla.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#17223b')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 7),
+
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (2, 1), (2, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [
+            colors.white,
+            colors.HexColor('#eaf1fb')
+        ]),
+
+        ('TOPPADDING', (0, 0), (-1, 0), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+    ]))
+
+    elementos.append(tabla)
+    elementos.append(Spacer(1, 20))
+
+    elementos.append(Paragraph(
+        'Documento generado automáticamente por el Sistema de Control Escolar.',
+        normal_style
+    ))
+
+    doc.build(elementos)
 
     return response
-
 
 class GrupoListView(BaseListView):
     model = Grupo
