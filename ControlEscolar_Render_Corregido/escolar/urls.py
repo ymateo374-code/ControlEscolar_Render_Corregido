@@ -41,6 +41,8 @@ urlpatterns = [
 
     path('grupos/', views.GrupoListView.as_view(), name='grupo_lista'),
     path('grupos/nuevo/', views.GrupoCreateView.as_view(), name='grupo_crear'),
+    path('grupos/<int:pk>/ver/', views.GrupoDetalleView.as_view(), name='grupo_detalle'),
+    path('grupos/<int:pk>/pdf/', views.grupo_pdf, name='grupo_pdf'),
     path('grupos/<int:pk>/editar/', views.GrupoUpdateView.as_view(), name='grupo_editar'),
     path('grupos/<int:pk>/eliminar/', views.GrupoDeleteView.as_view(), name='grupo_eliminar'),
 

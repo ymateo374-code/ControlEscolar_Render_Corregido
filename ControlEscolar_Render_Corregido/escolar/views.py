@@ -1,8 +1,10 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 
 from .models import Carrera, Profesor, Estudiante, Materia, Aula, PeriodoSemestral, Horario, Grupo, Calificacion
+from django.db.models import Avg
+from django.http import HttpResponse
 from .forms import CarreraForm, ProfesorForm, EstudianteForm, MateriaForm, AulaForm, PeriodoSemestralForm, HorarioForm, GrupoForm, CalificacionForm
 
 
@@ -31,6 +33,7 @@ class BaseListView(ListView):
             'crear_url': self.crear_url,
             'editar_url': self.editar_url,
             'eliminar_url': self.eliminar_url,
+            'detalle_url': getattr(self, 'detalle_url', None),
             'columnas': self.columnas,
         })
         return context
@@ -290,12 +293,106 @@ class HorarioDeleteView(BaseDeleteView):
     success_url_name = 'horario_lista'
 
 
+
+
+class GrupoDetalleView(DetailView):
+    model = Grupo
+    template_name = 'escolar/grupo_detalle.html'
+    context_object_name = 'grupo'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        grupo = self.object
+        alumnos = []
+
+        for estudiante in grupo.estudiantes.all().order_by('apellido_paterno', 'apellido_materno', 'nombre'):
+            promedio = Calificacion.objects.filter(
+                grupo=grupo,
+                estudiante=estudiante
+            ).aggregate(promedio=Avg('calificacion'))['promedio']
+
+            alumnos.append({
+                'numero_control': estudiante.numero_control,
+                'nombre': estudiante.nombre,
+                'apellido_paterno': estudiante.apellido_paterno,
+                'apellido_materno': estudiante.apellido_materno,
+                'promedio': promedio,
+            })
+
+        context['alumnos'] = alumnos
+        return context
+
+
+def grupo_pdf(request, pk):
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+
+    grupo = get_object_or_404(
+        Grupo.objects.select_related('materia', 'profesor', 'aula', 'periodo', 'horario'),
+        pk=pk
+    )
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="grupo_{grupo.id}.pdf"'
+
+    doc = SimpleDocTemplate(response, pagesize=letter)
+    styles = getSampleStyleSheet()
+    elementos = []
+
+    elementos.append(Paragraph('Reporte de Grupo', styles['Title']))
+    elementos.append(Spacer(1, 12))
+    elementos.append(Paragraph(f'<b>Grupo:</b> {grupo.nombre}', styles['Normal']))
+    elementos.append(Paragraph(f'<b>Materia:</b> {grupo.materia}', styles['Normal']))
+    elementos.append(Paragraph(f'<b>Profesor:</b> {grupo.profesor}', styles['Normal']))
+    elementos.append(Paragraph(f'<b>Aula:</b> {grupo.aula}', styles['Normal']))
+    elementos.append(Paragraph(f'<b>Periodo:</b> {grupo.periodo}', styles['Normal']))
+    elementos.append(Spacer(1, 16))
+
+    datos = [['No. Control', 'Nombre', 'Apellido paterno', 'Apellido materno', 'Promedio / Calificación']]
+
+    estudiantes = grupo.estudiantes.all().order_by('apellido_paterno', 'apellido_materno', 'nombre')
+    for estudiante in estudiantes:
+        promedio = Calificacion.objects.filter(
+            grupo=grupo,
+            estudiante=estudiante
+        ).aggregate(promedio=Avg('calificacion'))['promedio']
+
+        datos.append([
+            estudiante.numero_control,
+            estudiante.nombre,
+            estudiante.apellido_paterno,
+            estudiante.apellido_materno,
+            f'{promedio:.2f}' if promedio is not None else 'Sin calificación'
+        ])
+
+    if len(datos) == 1:
+        datos.append(['-', 'Sin alumnos registrados', '-', '-', '-'])
+
+    tabla = Table(datos, repeatRows=1)
+    tabla.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#17223b')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f4f6f9')]),
+    ]))
+
+    elementos.append(tabla)
+    doc.build(elementos)
+    return response
+
+
 class GrupoListView(BaseListView):
     model = Grupo
     titulo = 'Grupos'
     crear_url = 'grupo_crear'
     editar_url = 'grupo_editar'
     eliminar_url = 'grupo_eliminar'
+    detalle_url = 'grupo_detalle'
     columnas = [('nombre', 'Grupo'), ('materia', 'Materia'), ('profesor', 'Profesor'), ('aula', 'Aula'), ('periodo', 'Periodo'), ('horario', 'Horario')]
 
 
