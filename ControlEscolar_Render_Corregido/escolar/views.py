@@ -516,11 +516,6 @@ def grupo_pdf(request, pk):
     elementos.append(tabla)
     elementos.append(Spacer(1, 20))
 
-    elementos.append(Paragraph(
-        'Documento generado automáticamente por el Sistema de Control Escolar.',
-        normal_style
-    ))
-
     doc.build(elementos)
 
     return response
