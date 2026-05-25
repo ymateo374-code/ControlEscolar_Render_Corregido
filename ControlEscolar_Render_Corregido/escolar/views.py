@@ -6,7 +6,8 @@ from .models import Carrera, Profesor, Estudiante, Materia, Aula, PeriodoSemestr
 from django.db.models import Avg
 from django.http import HttpResponse
 from .forms import CarreraForm, ProfesorForm, EstudianteForm, MateriaForm, AulaForm, PeriodoSemestralForm, HorarioForm, GrupoForm, CalificacionForm
-
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib import colors
 
 def dashboard(request):
     context = {
@@ -322,67 +323,94 @@ class GrupoDetalleView(DetailView):
         context['alumnos'] = alumnos
         return context
 
+from django.http import HttpResponse
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.pdfgen import canvas
+from .models import Grupo, Calificacion
 
-def grupo_pdf(request, pk):
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import letter
-    from reportlab.lib.styles import getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
-    grupo = get_object_or_404(
-        Grupo.objects.select_related('materia', 'profesor', 'aula', 'periodo', 'horario'),
-        pk=pk
-    )
+def generar_pdf_grupo(request, grupo_id):
+
+    grupo = Grupo.objects.get(id=grupo_id)
+
+    calificaciones = Calificacion.objects.filter(grupo=grupo)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="grupo_{grupo.id}.pdf"'
 
-    doc = SimpleDocTemplate(response, pagesize=letter)
-    styles = getSampleStyleSheet()
-    elementos = []
+    pdf = canvas.Canvas(response, pagesize=landscape(letter))
 
-    elementos.append(Paragraph('Reporte de Grupo', styles['Title']))
-    elementos.append(Spacer(1, 12))
-    elementos.append(Paragraph(f'<b>Grupo:</b> {grupo.nombre}', styles['Normal']))
-    elementos.append(Paragraph(f'<b>Materia:</b> {grupo.materia}', styles['Normal']))
-    elementos.append(Paragraph(f'<b>Profesor:</b> {grupo.profesor}', styles['Normal']))
-    elementos.append(Paragraph(f'<b>Aula:</b> {grupo.aula}', styles['Normal']))
-    elementos.append(Paragraph(f'<b>Periodo:</b> {grupo.periodo}', styles['Normal']))
-    elementos.append(Spacer(1, 16))
+    # ===== TITULO =====
+    pdf.setFont("Helvetica-Bold", 20)
+    pdf.drawString(250, 550, "Reporte Parcial de Calificaciones")
 
-    datos = [['No. Control', 'Nombre', 'Apellido paterno', 'Apellido materno', 'Promedio / Calificación']]
+    # ===== DATOS DEL GRUPO =====
+    pdf.setFont("Helvetica", 12)
 
-    estudiantes = grupo.estudiantes.all().order_by('apellido_paterno', 'apellido_materno', 'nombre')
-    for estudiante in estudiantes:
-        promedio = Calificacion.objects.filter(
-            grupo=grupo,
-            estudiante=estudiante
-        ).aggregate(promedio=Avg('calificacion'))['promedio']
+    pdf.drawString(50, 510, f"Grupo: {grupo.nombre}")
+    pdf.drawString(50, 490, f"Materia: {grupo.materia}")
+    pdf.drawString(50, 470, f"Profesor: {grupo.profesor}")
+    pdf.drawString(50, 450, f"Aula: {grupo.aula}")
+    pdf.drawString(50, 430, f"Periodo: {grupo.periodo}")
+
+    # ===== TABLA =====
+    datos = [[
+        "No. Control",
+        "Nombre",
+        "Apellido Paterno",
+        "Apellido Materno",
+        "Promedio"
+    ]]
+
+    for c in calificaciones:
+
+        promedio = c.calificacion if c.calificacion else 0
 
         datos.append([
-            estudiante.numero_control,
-            estudiante.nombre,
-            estudiante.apellido_paterno,
-            estudiante.apellido_materno,
-            f'{promedio:.2f}' if promedio is not None else 'Sin calificación'
+            c.estudiante.numero_control,
+            c.estudiante.nombre,
+            c.estudiante.apellido_paterno,
+            c.estudiante.apellido_materno,
+            str(promedio)
         ])
 
-    if len(datos) == 1:
-        datos.append(['-', 'Sin alumnos registrados', '-', '-', '-'])
+    tabla = Table(datos, colWidths=[120, 120, 140, 140, 100])
 
-    tabla = Table(datos, repeatRows=1)
     tabla.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#17223b')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f4f6f9')]),
+
+        # Encabezado
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#0B1F4D")),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 11),
+
+        # Datos
+        ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
+        ('FONTSIZE', (0,1), (-1,-1), 9),
+
+        # Bordes
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+
+        # Fondo
+        ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
+
+        # Centrado
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+
+        # Espaciado
+        ('BOTTOMPADDING', (0,0), (-1,0), 10),
+        ('TOPPADDING', (0,0), (-1,0), 10),
+
     ]))
 
-    elementos.append(tabla)
-    doc.build(elementos)
+    tabla.wrapOn(pdf, 50, 300)
+    tabla.drawOn(pdf, 50, 300)
+
+    pdf.save()
+
     return response
 
 
