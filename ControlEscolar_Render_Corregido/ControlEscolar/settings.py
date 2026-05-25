@@ -61,9 +61,10 @@ WSGI_APPLICATION = 'ControlEscolar.wsgi.application'
 import dj_database_url
 import os
 
+
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.getenv("DATABASE_URL")
+        default='sqlite:///db.sqlite3'
     )
 }
 
