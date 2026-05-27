@@ -10,7 +10,6 @@
     </div>
     <div class="d-flex gap-2">
         <a href="{% url 'grupo_editar' grupo.id %}" class="btn btn-primary">Agregar alumno</a>
-
         <a href="{% url 'grupo_pdf' grupo.id %}" class="btn btn-danger">Imprimir PDF</a>
         <a href="{% url 'grupo_lista' %}" class="btn btn-secondary">Volver</a>
     </div>
@@ -47,9 +46,9 @@
                         </td>
                         <td class="text-center">
                             <form method="post" action="{% url 'dar_baja_alumno_grupo' grupo.id alumno.id %}" onsubmit="return confirm('¿Seguro que deseas dar de baja a este alumno del grupo?');">
-                              {% csrf_token %}
-                             <button type="submit" class="btn btn-sm btn-danger">
-                                      Dar de baja
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    Dar de baja
                                 </button>
                             </form>
                         </td>

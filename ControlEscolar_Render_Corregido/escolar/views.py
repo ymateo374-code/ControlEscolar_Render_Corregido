@@ -322,6 +322,7 @@ class GrupoDetalleView(DetailView):
 
         context['alumnos'] = alumnos
         return context
+    
 def dar_baja_alumno_grupo(request, grupo_id, estudiante_id):
     grupo = get_object_or_404(Grupo, pk=grupo_id)
     estudiante = get_object_or_404(Estudiante, pk=estudiante_id)
