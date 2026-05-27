@@ -65,10 +65,7 @@ class HorarioForm(BootstrapModelForm):
 class GrupoForm(BootstrapModelForm):
     class Meta:
         model = Grupo
-        fields = '__all__'
-        widgets = {
-            'estudiantes': forms.SelectMultiple(attrs={'size': '8'}),
-        }
+        exclude = ['estudiantes']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
