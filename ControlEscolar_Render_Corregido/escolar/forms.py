@@ -67,39 +67,6 @@ class GrupoForm(BootstrapModelForm):
         model = Grupo
         exclude = ['estudiantes']
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.fields['estudiantes'].queryset = Estudiante.objects.all().order_by(
-            'apellido_paterno',
-            'apellido_materno',
-            'nombre'
-        )
-
-        if self.instance and self.instance.pk:
-            self.fields['estudiantes'].queryset = self.fields['estudiantes'].queryset.exclude(
-                grupos=self.instance
-            )
-            self.fields['estudiantes'].label = 'Agregar alumnos nuevos al grupo'
-            self.fields['estudiantes'].required = False
-            self.fields['estudiantes'].initial = []
-            self.fields['estudiantes'].help_text = (
-                'Los alumnos que ya pertenecen al grupo se conservan. '
-                'Aquí solo selecciona los alumnos nuevos que deseas agregar.'
-            )
-
-    def save(self, commit=True):
-        alumnos_seleccionados = self.cleaned_data.pop('estudiantes', [])
-        grupo = super().save(commit=commit)
-
-        if commit:
-            if self.instance and self.instance.pk:
-                grupo.estudiantes.add(*alumnos_seleccionados)
-            else:
-                grupo.estudiantes.set(alumnos_seleccionados)
-
-        return grupo
-
 class CalificacionForm(BootstrapModelForm):
     class Meta:
         model = Calificacion
