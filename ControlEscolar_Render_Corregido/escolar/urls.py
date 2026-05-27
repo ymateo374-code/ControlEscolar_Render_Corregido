@@ -44,6 +44,7 @@ urlpatterns = [
     path('grupos/<int:pk>/ver/', views.GrupoDetalleView.as_view(), name='grupo_detalle'),
     path('grupos/<int:pk>/pdf/', views.grupo_pdf, name='grupo_pdf'),
     path('grupos/<int:pk>/editar/', views.GrupoUpdateView.as_view(), name='grupo_editar'),
+    path('grupos/<int:pk>/eliminar/', views.GrupoDeleteView.as_view(), name='grupo_eliminar'),
     path('grupos/<int:grupo_id>/alumnos/<int:estudiante_id>/baja/', views.dar_baja_alumno_grupo, name='dar_baja_alumno_grupo'),
 
     path('calificaciones/', views.CalificacionListView.as_view(), name='calificacion_lista'),
