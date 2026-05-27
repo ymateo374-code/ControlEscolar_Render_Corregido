@@ -321,7 +321,26 @@ class GrupoDetalleView(DetailView):
             })
 
         context['alumnos'] = alumnos
+        context['alumnos_disponibles'] = Estudiante.objects.exclude(
+             grupos=grupo
+                ).order_by(
+                    'apellido_paterno',
+                    'apellido_materno',
+                    'nombre'
+                )
         return context
+
+def agregar_alumno_grupo(request, grupo_id):
+    grupo = get_object_or_404(Grupo, pk=grupo_id)
+
+    if request.method == 'POST':
+        estudiante_id = request.POST.get('estudiante_id')
+
+        if estudiante_id:
+            estudiante = get_object_or_404(Estudiante, pk=estudiante_id)
+            grupo.estudiantes.add(estudiante)
+
+    return redirect('grupo_detalle', pk=grupo.id)
     
 def dar_baja_alumno_grupo(request, grupo_id, estudiante_id):
     grupo = get_object_or_404(Grupo, pk=grupo_id)
@@ -335,8 +354,14 @@ def dar_baja_alumno_grupo(request, grupo_id, estudiante_id):
             estudiante=estudiante
         ).delete()
 
-    return redirect('grupo_detalle', pk=grupo.id)
+        return redirect('grupo_detalle', pk=grupo.id)
 
+    return render(request, 'escolar/confirmar_baja_alumno_grupo.html', {
+        'grupo': grupo,
+        'estudiante': estudiante,
+        'titulo': 'Dar de baja alumno',
+        'volver_url': 'grupo_detalle',
+    })
 def grupo_pdf(request, pk):
     from django.http import HttpResponse
     from django.shortcuts import get_object_or_404

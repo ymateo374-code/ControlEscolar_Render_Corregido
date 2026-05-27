@@ -1,0 +1,27 @@
+{% extends 'escolar/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card page-card text-center">
+            <div class="card-body p-5">
+                <h2 class="fw-bold text-danger mb-4">Dar de baja alumno</h2>
+
+                <p class="fs-5">¿Estás seguro de dar de baja a este alumno del grupo?</p>
+
+                <p class="text-muted mb-4">
+                    {{ estudiante.numero_control }} - {{ estudiante.nombre }} {{ estudiante.apellido_paterno }} {{ estudiante.apellido_materno }}
+                    <br>
+                    Grupo: {{ grupo.nombre }}
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <a href="{% url 'grupo_detalle' grupo.id %}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-danger">Dar de baja</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

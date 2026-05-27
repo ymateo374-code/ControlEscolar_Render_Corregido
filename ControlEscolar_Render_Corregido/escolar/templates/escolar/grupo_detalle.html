@@ -9,12 +9,42 @@
         </p>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% url 'grupo_editar' grupo.id %}" class="btn btn-primary">Agregar alumno</a>
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#agregarAlumno">
+            Agregar alumno
+        </button>
         <a href="{% url 'grupo_pdf' grupo.id %}" class="btn btn-danger">Imprimir PDF</a>
         <a href="{% url 'grupo_lista' %}" class="btn btn-secondary">Volver</a>
     </div>
 </div>
+<div class="collapse mb-4" id="agregarAlumno">
+    <div class="card page-card">
+        <div class="card-body p-4">
+            <h4 class="fw-bold mb-3">Agregar alumno al grupo</h4>
 
+            <form method="post" action="{% url 'agregar_alumno_grupo' grupo.id %}">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Selecciona un alumno</label>
+                    <select name="estudiante_id" class="form-select" required>
+                        <option value="">-- Selecciona un alumno --</option>
+                        {% for estudiante in alumnos_disponibles %}
+                            <option value="{{ estudiante.id }}">
+                                {{ estudiante.numero_control }} - {{ estudiante.nombre }} {{ estudiante.apellido_paterno }} {{ estudiante.apellido_materno }}
+                            </option>
+                        {% empty %}
+                            <option value="">No hay alumnos disponibles para agregar</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button class="btn btn-primary" type="submit">Agregar al grupo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <div class="card page-card">
     <div class="card-body p-4">
         <h4 class="fw-bold mb-3">Alumnos registrados en el grupo</h4>
@@ -44,13 +74,10 @@
                                 <span class="text-muted">Sin calificación</span>
                             {% endif %}
                         </td>
-                        <td class="text-center">
-                            <form method="post" action="{% url 'dar_baja_alumno_grupo' grupo.id alumno.id %}" onsubmit="return confirm('¿Seguro que deseas dar de baja a este alumno del grupo?');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-danger">
-                                    Dar de baja
-                                </button>
-                            </form>
+                         <td class="text-center">
+                            <a href="{% url 'dar_baja_alumno_grupo' grupo.id alumno.id %}" class="btn btn-sm btn-danger">
+                                Dar de baja
+                            </a>
                         </td>
                     </tr>
                     {% empty %}
