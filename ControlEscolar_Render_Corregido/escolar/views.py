@@ -1,4 +1,4 @@
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 
@@ -310,8 +310,9 @@ class GrupoDetalleView(DetailView):
                 grupo=grupo,
                 estudiante=estudiante
             ).aggregate(promedio=Avg('calificacion'))['promedio']
-
+            
             alumnos.append({
+               'id': estudiante.id,
                 'numero_control': estudiante.numero_control,
                 'nombre': estudiante.nombre,
                 'apellido_paterno': estudiante.apellido_paterno,
@@ -321,7 +322,19 @@ class GrupoDetalleView(DetailView):
 
         context['alumnos'] = alumnos
         return context
+def dar_baja_alumno_grupo(request, grupo_id, estudiante_id):
+    grupo = get_object_or_404(Grupo, pk=grupo_id)
+    estudiante = get_object_or_404(Estudiante, pk=estudiante_id)
 
+    if request.method == 'POST':
+        grupo.estudiantes.remove(estudiante)
+
+        Calificacion.objects.filter(
+            grupo=grupo,
+            estudiante=estudiante
+        ).delete()
+
+    return redirect('grupo_detalle', pk=grupo.id)
 
 def grupo_pdf(request, pk):
     from django.http import HttpResponse
@@ -555,13 +568,18 @@ class GrupoDeleteView(BaseDeleteView):
 
 class CalificacionListView(BaseListView):
     model = Calificacion
+    template_name = 'escolar/lista.html'
+    context_object_name = 'objetos'
     titulo = 'Calificaciones'
     crear_url = 'calificacion_crear'
     editar_url = 'calificacion_editar'
     eliminar_url = 'calificacion_eliminar'
     columnas = [('estudiante', 'Estudiante'), ('grupo', 'Grupo'), ('periodo', 'Periodo'), ('calificacion', 'Calificación'), ('observaciones', 'Observaciones')]
 
-
+    def get_queryset(self):
+        return Calificacion.objects.filter(estudiante__grupos=F('grupo')).select_related(
+            'estudiante', 'grupo', 'periodo'
+        )
 class CalificacionCreateView(BaseCreateView):
     model = Calificacion
     form_class = CalificacionForm

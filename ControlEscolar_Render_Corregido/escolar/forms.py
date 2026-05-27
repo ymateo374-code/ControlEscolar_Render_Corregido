@@ -72,6 +72,7 @@ class GrupoForm(BootstrapModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self.fields['estudiantes'].queryset = Estudiante.objects.all().order_by(
             'apellido_paterno',
             'apellido_materno',
