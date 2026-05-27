@@ -6,7 +6,7 @@ from .models import Carrera, Profesor, Estudiante, Materia, Aula, PeriodoSemestr
 from django.db.models import Avg
 from django.http import HttpResponse
 from .forms import CarreraForm, ProfesorForm, EstudianteForm, MateriaForm, AulaForm, PeriodoSemestralForm, HorarioForm, GrupoForm, CalificacionForm
-
+from django.db.models import Avg, F
 
 def dashboard(request):
     context = {
@@ -326,7 +326,7 @@ class GrupoDetalleView(DetailView):
 def grupo_pdf(request, pk):
     from django.http import HttpResponse
     from django.shortcuts import get_object_or_404
-    from django.db.models import Avg
+    from django.db.models import Avg, F
 
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import letter, landscape

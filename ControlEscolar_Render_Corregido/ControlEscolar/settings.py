@@ -58,7 +58,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ControlEscolar.wsgi.application'
 
-import dj_database_url
 import os
 
 DATABASES = {
